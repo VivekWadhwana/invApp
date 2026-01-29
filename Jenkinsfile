@@ -25,6 +25,18 @@ pipeline {
             }
         }
 
+        stage('Kill Port 80') {
+            steps {
+                bat '''
+                echo Checking port 80...
+                FOR /F "tokens=5" %%P IN ('netstat -ano ^| findstr :80') DO (
+                    echo Killing PID %%P
+                    taskkill /PID %%P /F
+                )
+                '''
+            }
+        }
+
         stage('Docker Run') {
             steps {
                 bat 'docker rm -f vite-container || exit 0'
