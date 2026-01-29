@@ -1,0 +1,79 @@
+[
+  {
+    "id": 1,
+    "name": "Cotton Fabric",
+    "category": "Fabric",
+    "quantity": 50,
+    "price": 4000
+  },
+  {
+    "id": 2,
+    "name": "Lockstitch Machine",
+    "category": "Sewing Machine",
+    "quantity": 5,
+    "price": 40000
+  },
+  {
+    "id": 3,
+    "name": "Colored Thread",
+    "category": "Thread",
+    "quantity": 100,
+    "price": 800
+  },
+  {
+    "id": 4,
+    "name": "Cotton Fabric",
+    "category": "Fabric",
+    "quantity": 1,
+    "price": 4000
+  },
+  {
+    "id": 5,
+    "name": "Cotton Fabric",
+    "category": "Fabric",
+    "quantity": 1,
+    "price": 4000
+  },
+  {
+    "id": 6,
+    "name": "Silk Fabric",
+    "category": "Fabric",
+    "quantity": 1,
+    "price": 8000
+  },
+  {
+    "id": 7,
+    "name": "Cotton Fabric",
+    "category": "Fabric",
+    "quantity": 1,
+    "price": 4000
+  },
+  {
+    "id": 8,
+    "name": "Singer Heavy Duty",
+    "category": "Sewing Machine",
+    "quantity": 1,
+    "price": 45000
+  },
+  {
+    "id": 9,
+    "name": "Sharp Needles",
+    "category": "Needle",
+    "quantity": 1,
+    "price": 450
+  },
+  {
+    "id": 10,
+    "name": "Silk Fabric",
+    "category": "Fabric",
+    "quantity": 1,
+    "price": 8000
+  },
+  {
+    "id": 11,
+    "name": "Denim Fabric",
+    "category": "Fabric",
+    "quantity": 1,
+    "price": 3500
+  }
+]

@@ -1,0 +1,98 @@
+[
+  {
+    "id": 7,
+    "action": "Added",
+    "product": {
+      "id": 10,
+      "name": "Silk Fabric",
+      "category": "Fabric",
+      "quantity": 1,
+      "price": 8000
+    },
+    "timestamp": "2026-01-20T19:46:00.120Z"
+  },
+  {
+    "id": 5,
+    "action": "Added",
+    "product": {
+      "id": 8,
+      "name": "Singer Heavy Duty",
+      "category": "Sewing Machine",
+      "quantity": 1,
+      "price": 45000
+    },
+    "timestamp": "2026-01-20T19:42:11.250Z"
+  },
+  {
+    "id": 3,
+    "action": "Added",
+    "product": {
+      "id": 6,
+      "name": "Silk Fabric",
+      "category": "Fabric",
+      "quantity": 1,
+      "price": 8000
+    },
+    "timestamp": "2026-01-20T19:40:36.985Z"
+  },
+  {
+    "id": 1,
+    "action": "Added",
+    "product": {
+      "id": 4,
+      "name": "Cotton Fabric",
+      "category": "Fabric",
+      "quantity": 1,
+      "price": 4000
+    },
+    "timestamp": "2026-01-20T19:34:25.113Z"
+  },
+  {
+    "id": 2,
+    "action": "Added",
+    "product": {
+      "id": 5,
+      "name": "Cotton Fabric",
+      "category": "Fabric",
+      "quantity": 1,
+      "price": 4000
+    },
+    "timestamp": "2026-01-20T19:40:03.530Z"
+  },
+  {
+    "id": 4,
+    "action": "Added",
+    "product": {
+      "id": 7,
+      "name": "Cotton Fabric",
+      "category": "Fabric",
+      "quantity": 1,
+      "price": 4000
+    },
+    "timestamp": "2026-01-20T19:40:59.331Z"
+  },
+  {
+    "id": 6,
+    "action": "Added",
+    "product": {
+      "id": 9,
+      "name": "Sharp Needles",
+      "category": "Needle",
+      "quantity": 1,
+      "price": 450
+    },
+    "timestamp": "2026-01-20T19:44:17.400Z"
+  },
+  {
+    "id": 8,
+    "action": "Added",
+    "product": {
+      "id": 11,
+      "name": "Denim Fabric",
+      "category": "Fabric",
+      "quantity": 1,
+      "price": 3500
+    },
+    "timestamp": "2026-01-20T19:48:47.232Z"
+  }
+]
