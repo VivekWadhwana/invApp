@@ -5,6 +5,11 @@ pipeline {
         nodejs "node"
     }
 
+    environment {
+        DOCKER_USER = "vivek170205"
+        IMAGE_NAME = "vite-app"
+    }
+
     stages {
 
         stage('Install Dependencies') {
@@ -21,7 +26,21 @@ pipeline {
 
         stage('Docker Build') {
             steps {
-                bat 'docker build -t vite-app .'
+                bat "docker build -t %DOCKER_USER%/%IMAGE_NAME% ."
+            }
+        }
+
+        stage('Docker Login') {
+            steps {
+                withCredentials([usernamePassword(credentialsId: 'dockerhub-creds', usernameVariable: 'USER', passwordVariable: 'PASS')]) {
+                    bat "echo %PASS% | docker login -u %USER% --password-stdin"
+                }
+            }
+        }
+
+        stage('Docker Push') {
+            steps {
+                bat "docker push %DOCKER_USER%/%IMAGE_NAME%"
             }
         }
 
@@ -33,7 +52,7 @@ pipeline {
 
         stage('Docker Run') {
             steps {
-                bat 'docker run -d -p 80:80 --name vite-container vite-app'
+                bat "docker run -d -p 80:80 --name vite-container %DOCKER_USER%/%IMAGE_NAME%"
             }
         }
     }
