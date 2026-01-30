@@ -55,7 +55,7 @@ pipeline {
                 script {
                     try {
                         withCredentials([usernamePassword(credentialsId: 'dockerhub-creds', usernameVariable: 'USER', passwordVariable: 'PASS')]) {
-                            bat "echo %PASS% | docker login -u %USER% --password-stdin"
+                            bat "docker login -u %USER% -p %PASS%"
                         }
                     } catch (Exception e) {
                         echo "Docker login failed: ${e.getMessage()}"
@@ -68,7 +68,7 @@ pipeline {
 
         stage('Docker Push') {
             steps {
-                bat "docker push %DOCKER_USER%/%IMAGE_NAME%"
+                bat "docker push vivek170205/vite-app:latest
             }
         }
 
