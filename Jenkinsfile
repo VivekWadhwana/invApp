@@ -63,9 +63,18 @@ pipeline {
                                             sonarsource/sonar-scanner-cli ^
                                             -Dsonar.projectKey=inventory-frontend ^
                                             -Dsonar.sources=/usr/src ^
-                                            -Dsonar.login=%SONAR_TOKEN%
+                                            -Dsonar.token=%SONAR_TOKEN%
                                         """
                                 }
+            }
+        }
+
+        // 5.1️⃣ SonarQube Quality Gate
+        stage('Quality Gate') {
+            steps {
+                timeout(time: 2, unit: 'MINUTES') {
+                    waitForQualityGate abortPipeline: true
+                }
             }
         }
 
