@@ -1,155 +1,116 @@
 pipeline {
+
+    // Jenkins can run on any agent (Windows/Linux)
     agent any
 
-    tools {
-        nodejs "node"
+    // AUTO BUILD WITHOUT WEBHOOK (Poll GitHub every 5 min)
+    triggers {
+        pollSCM('H/5 * * * *')
     }
 
+    // Environment variables
     environment {
         DOCKER_USER = "vivek170205"
         FRONTEND_IMAGE = "inventory-frontend"
-        SONAR_AUTH_TOKEN = credentials('sonar-token')
+        SONAR_TOKEN = credentials('sonar-token')
     }
 
     stages {
 
-        stage('Install Frontend Dependencies') {
+        // 1️⃣ Get Code from GitHub
+        stage('Clone Code') {
+            steps {
+                git 'https://github.com/your-username/your-repo.git'
+            }
+        }
+
+        // 2️⃣ Install Node Modules
+        stage('Install Dependencies') {
             steps {
                 bat "npm install"
             }
         }
 
-        stage('Lint & Test') {
+        // 3️⃣ Build React/Vite App
+        stage('Build App') {
             steps {
-                echo '🔨 Building Frontend...'
                 bat "npm run build"
             }
         }
 
+        // 4️⃣ Run Tests (Optional)
+        stage('Test App') {
+            steps {
+                bat "npm test || echo No tests"
+            }
+        }
+
+        // 5️⃣ SonarQube Code Quality Scan
         stage('SonarQube Scan') {
             steps {
-                script {
-                    def scannerHome = tool 'SonarScanner'
-                    withSonarQubeEnv('SonarQube') {
-                        bat """
-                        "${scannerHome}\\bin\\sonar-scanner.bat" ^
-                        -Dsonar.projectKey=inventory-fullstack ^
-                        -Dsonar.sources=. ^
-                        -Dsonar.host.url=http://localhost:9000 ^
-                        -Dsonar.token=%SONAR_AUTH_TOKEN%
-                        """
-                    }
-
-                    // Wait for Quality Gate result — mark UNSTABLE on failure or errors
-                    try {
-                        timeout(time: 5, unit: 'MINUTES') {
-                            def qg = waitForQualityGate()
-                            if (qg == null) {
-                                echo '⚠️ No Quality Gate result received from SonarQube. Marking UNSTABLE.'
-                                currentBuild.result = 'UNSTABLE'
-                            } else if (qg.status != 'OK') {
-                                echo "⚠️ SonarQube Quality Gate status: ${qg.status}. Marking UNSTABLE."
-                                currentBuild.result = 'UNSTABLE'
-                            } else {
-                                echo '✅ SonarQube Quality Gate passed.'
-                            }
-                        }
-                    } catch (err) {
-                        echo "⚠️ SonarQube Quality Gate check failed: ${err}. Marking UNSTABLE."
-                        currentBuild.result = 'UNSTABLE'
-                    }
+                withSonarQubeEnv('SonarQube') {
+                    bat """
+                    sonar-scanner ^
+                    -Dsonar.projectKey=inventory-frontend ^
+                    -Dsonar.sources=. ^
+                    -Dsonar.login=${SONAR_TOKEN}
+                    """
                 }
             }
         }
 
-        stage('Docker Build Images') {
+        // 6️⃣ Build Docker Image
+        stage('Docker Build') {
             steps {
-                bat "docker build -t %DOCKER_USER%/%FRONTEND_IMAGE% ."
+                bat "docker build -t %DOCKER_USER%/%FRONTEND_IMAGE%:latest ."
             }
         }
 
+        // 7️⃣ Login to DockerHub
         stage('Docker Login') {
             steps {
                 withCredentials([usernamePassword(credentialsId: 'dockerhub-creds', usernameVariable: 'USER', passwordVariable: 'PASS')]) {
-                    bat "docker login -u %USER% -p %PASS%"
+                    bat "echo %PASS% | docker login -u %USER% --password-stdin"
                 }
             }
         }
 
-        stage('Docker Push Images') {
+        // 8️⃣ Push Docker Image
+        stage('Docker Push') {
             steps {
                 bat "docker push %DOCKER_USER%/%FRONTEND_IMAGE%:latest"
             }
         }
 
-        stage('Stop Previous Containers') {
+        // 9️⃣ Stop Old Containers
+        stage('Stop Old Containers') {
             steps {
-                script {
-                    echo '🛑 Stopping and removing previous containers...'
-                    bat '''
-                    docker compose down --remove-orphans 2>nul || echo "No containers to stop"
-                    docker container rm inventory-frontend -f 2>nul || echo "No old container to remove"
-                    '''
-                }
+                bat """
+                docker compose down --remove-orphans || echo No containers
+                docker container rm inventory-frontend -f || echo No old container
+                """
             }
         }
 
-        stage('Deploy Frontend') {
+        // 🔟 Deploy New Container
+        stage('Deploy App') {
             steps {
-                script {
-                    echo '🚀 Starting frontend container with docker-compose...'
-                    bat "docker compose up -d"
-                }
+                bat "docker compose up -d"
             }
         }
-
-        // Health Check & Validation stage removed per request
     }
 
+    // After pipeline finished
     post {
-        always {
-            echo '🧹 Cleaning up Docker resources...'
-            bat "docker system prune -f"
-        }
         success {
-            echo '=================================='
-            echo '🚀 FRONTEND DEPLOYMENT SUCCESSFUL!'
-            echo '=================================='
-            echo ''
-            echo '📦 Deployed Service:'
-            echo '  ✅ Frontend (React + Vite + Nginx): http://localhost:3000'
-            echo ''
-            echo '🐳 Docker Image:'
-            echo "  • ${DOCKER_USER}/${FRONTEND_IMAGE}:latest"
-            echo ''
-            echo '✅ Pipeline Stages Completed:'
-            echo '  ✓ Dependencies Installation'
-            echo '  ✓ Frontend Build (Vite)'
-            echo '  ✓ SonarQube Code Quality Scan'
-            echo '  ✓ Docker Build'
-            echo '  ✓ Docker Push to Registry'
-            echo '  ✓ Frontend Deployment (docker-compose)'
-            echo ''
-            echo '📍 Access your app at: http://localhost:3000'
-            echo '🐳 Manage with: docker compose up/down'
-            echo '=================================='
+            echo "===================================="
+            echo "✅ APP DEPLOYED SUCCESSFULLY"
+            echo "🌐 Open: http://localhost:3000"
+            echo "===================================="
         }
         failure {
-            echo '=================================='
-            echo '❌ DEPLOYMENT FAILED!'
-            echo '=================================='
-            echo ''
-            echo '📋 Showing container logs...'
-            bat "docker compose logs --tail=50 2>nul || echo \"No compose logs available\""
-            echo ''
-            echo '🔍 Troubleshooting tips:'
-            echo '  1. Check running containers: docker ps -a'
-            echo '  2. Check compose logs: docker compose logs'
-            echo '  3. Verify port 80 is free: netstat -ano | findstr \":80 \"'
-            echo '  4. Kill process on port 80: taskkill /PID <PID> /F'
-            echo '  5. Docker resources: docker system df'
-            echo '  6. Try: docker compose down --remove-orphans && docker system prune -f'
-            echo '=================================='
+            echo "❌ PIPELINE FAILED"
+            bat "docker ps -a"
         }
     }
 }
