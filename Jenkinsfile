@@ -5,7 +5,7 @@ pipeline {
 
     // AUTO BUILD WITHOUT WEBHOOK (Poll GitHub every 5 min)
     triggers {
-        pollSCM('H/5 * * * *')
+        pollSCM('* * * * *')
     }
 
     // Environment variables
