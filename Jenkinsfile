@@ -3,6 +3,8 @@ pipeline {
 
     tools {
         nodejs "node"
+        // Add SonarScanner tool - configure this in Jenkins Global Tool Configuration
+        // sonarQubeScanner "SonarScanner"
     }
 
     environment {
@@ -27,14 +29,18 @@ pipeline {
 
         stage('SonarQube Scan') {
             steps {
-                withSonarQubeEnv('SonarQube') {
-                    bat '''
-                    sonar-scanner ^
-                    -Dsonar.projectKey=vite-app ^
-                    -Dsonar.sources=. ^
-                    -Dsonar.host.url=http://localhost:9000 ^
-                    -Dsonar.login=%SONAR_AUTH_TOKEN%
-                    '''
+                script {
+                    // Check if sonar-scanner is available
+                    def scannerHome = tool 'SonarScanner' // This requires SonarScanner to be configured in Jenkins
+                    withSonarQubeEnv('SonarQube') {
+                        bat """
+                        "%scannerHome%\bin\sonar-scanner.bat" ^
+                        -Dsonar.projectKey=vite-app ^
+                        -Dsonar.sources=. ^
+                        -Dsonar.host.url=http://localhost:9000 ^
+                        -Dsonar.login=%SONAR_AUTH_TOKEN%
+                        """
+                    }
                 }
             }
         }
