@@ -50,14 +50,19 @@ pipeline {
                 expression { return env.RUN_SONAR == 'true' }
             }
             steps {
-                withSonarQubeEnv('SonarQube') {
-                    bat """
-                    sonar-scanner ^
-                    -Dsonar.projectKey=inventory-frontend ^
-                    -Dsonar.sources=. ^
-                    -Dsonar.login=${SONAR_TOKEN}
-                    """
-                }
+                                withSonarQubeEnv('SonarQube') {
+                                        // Use Dockerized SonarScanner to avoid relying on agent-installed binary
+                                        bat """
+                                        docker run --rm \
+                                            -e SONAR_HOST_URL=%SONAR_HOST_URL% \
+                                            -e SONAR_LOGIN=%SONAR_TOKEN% \
+                                            -v %WORKSPACE%:/usr/src \
+                                            sonarsource/sonar-scanner-cli \
+                                            -Dsonar.projectKey=inventory-frontend \
+                                            -Dsonar.sources=/usr/src \
+                                            -Dsonar.login=%SONAR_TOKEN%
+                                        """
+                                }
             }
         }
 
