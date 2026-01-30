@@ -6,8 +6,12 @@ WORKDIR /app
 # Copy package files
 COPY package*.json ./
 
-# Install dependencies
-RUN npm install --production
+# Install dependencies with network timeout fixes
+RUN npm config set registry https://registry.npmjs.org/ && \
+    npm config set fetch-timeout 300000 && \
+    npm config set fetch-retry-mintimeout 20000 && \
+    npm config set fetch-retry-maxtimeout 120000 && \
+    npm install --production --no-audit --no-fund
 
 # Copy source code
 COPY . .
