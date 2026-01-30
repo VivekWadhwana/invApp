@@ -1,38 +1,56 @@
+version: '3.8'
+
 services:
-  # MongoDB Database
   mongodb:
-    image: mongo:7
+    image: mongo:latest
     container_name: inventory-mongodb
     ports:
       - "27017:27017"
+    environment:
+      MONGO_INITDB_DATABASE: inventory
     volumes:
       - mongodb_data:/data/db
     networks:
       - inventory-network
+    healthcheck:
+      test: echo 'db.adminCommand("ping")' | mongosh localhost:27017/test
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
-  # Backend API
   backend:
     build: ./backend
     container_name: inventory-backend
     ports:
       - "5000:5000"
-    depends_on:
-      - mongodb
     environment:
-      - MONGODB_URI=mongodb://mongodb:27017/inventory
+      - MONGODB_URI=mongodb://inventory-mongodb:27017/inventory
+      - NODE_ENV=production
+    depends_on:
+      mongodb:
+        condition: service_healthy
     networks:
       - inventory-network
+    healthcheck:
+      test: curl -f http://localhost:5000/api/inventory || exit 1
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
-  # Frontend (Vite + Nginx)
   frontend:
-    build: .
+    build:
+      context: .
+      dockerfile: Dockerfile
     container_name: inventory-frontend
     ports:
       - "80:80"
     depends_on:
-      - backend
+      backend:
+        condition: service_healthy
     networks:
       - inventory-network
+    environment:
+      - VITE_API_URL=http://localhost:5000
 
 volumes:
   mongodb_data:
