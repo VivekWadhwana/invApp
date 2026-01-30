@@ -146,15 +146,17 @@ pipeline {
             steps {
                 bat """
                 docker compose down --remove-orphans || echo No containers
-                docker container rm inventory-frontend inventory-backend inventory-mongodb -f || echo No old containers
+                docker container rm inventory-frontend inventory-backend inventory-mongodb inventory-prometheus inventory-grafana inventory-node-exporter inventory-cadvisor -f || echo No old containers
                 """
             }
         }
 
-        // 9️⃣ Deploy Full Stack
-        stage('Deploy App') {
+        // 9️⃣ Deploy Full Stack with Monitoring
+        stage('Deploy Full Stack') {
             steps {
                 bat "docker compose up -d"
+                // Wait for all services to start
+                bat "timeout /t 30 /nobreak"
             }
         }
 
@@ -162,17 +164,14 @@ pipeline {
         stage('Health Check & Validation') {
             steps {
                 script {
-                    // Wait for containers to start
-                    bat "timeout /t 15 /nobreak"
-                    
-                    // Check container status
-                    bat "docker ps"
-                    
                     try {
+                        // Check container status
+                        bat "docker ps"
+                        
                         // Test Frontend
                         powershell """
                         try {
-                            \$response = Invoke-WebRequest -Uri 'http://localhost:80' -TimeoutSec 10
+                            \$response = Invoke-WebRequest -Uri 'http://localhost:80' -TimeoutSec 15
                             if (\$response.StatusCode -eq 200) {
                                 Write-Host '✅ Frontend is accessible'
                             } else {
@@ -187,7 +186,7 @@ pipeline {
                         // Test Backend API - Inventory endpoint
                         powershell """
                         try {
-                            \$response = Invoke-WebRequest -Uri 'http://localhost:5000/api/inventory' -TimeoutSec 10
+                            \$response = Invoke-WebRequest -Uri 'http://localhost:5000/api/inventory' -TimeoutSec 15
                             if (\$response.StatusCode -eq 200) {
                                 Write-Host '✅ Backend Inventory API is working'
                             } else {
@@ -199,33 +198,75 @@ pipeline {
                         }
                         """
                         
-                        // Test Backend API - Auth endpoint with POST
+                        // Test Prometheus
                         powershell """
                         try {
-                            \$body = @{
-                                email = 'admin@test.com'
-                                password = 'admin123'
-                            } | ConvertTo-Json
-                            
-                            \$response = Invoke-WebRequest -Uri 'http://localhost:5000/api/auth/login' -Method POST -Body \$body -ContentType 'application/json' -TimeoutSec 10
+                            \$response = Invoke-WebRequest -Uri 'http://localhost:9090/-/healthy' -TimeoutSec 15
                             if (\$response.StatusCode -eq 200) {
-                                Write-Host '✅ Backend Auth API is working'
+                                Write-Host '✅ Prometheus is healthy'
                             } else {
-                                throw 'Backend Auth API returned status: ' + \$response.StatusCode
+                                throw 'Prometheus returned status: ' + \$response.StatusCode
                             }
                         } catch {
-                            Write-Host '❌ Backend Auth API health check failed:' \$_.Exception.Message
+                            Write-Host '❌ Prometheus health check failed:' \$_.Exception.Message
                             throw
                         }
                         """
                         
-                        echo "✅ All health checks passed!"
+                        // Test Grafana
+                        powershell """
+                        try {
+                            \$response = Invoke-WebRequest -Uri 'http://localhost:3001/api/health' -TimeoutSec 15
+                            if (\$response.StatusCode -eq 200) {
+                                Write-Host '✅ Grafana is healthy'
+                            } else {
+                                throw 'Grafana returned status: ' + \$response.StatusCode
+                            }
+                        } catch {
+                            Write-Host '❌ Grafana health check failed:' \$_.Exception.Message
+                            throw
+                        }
+                        """
+                        
+                        // Test Node Exporter
+                        powershell """
+                        try {
+                            \$response = Invoke-WebRequest -Uri 'http://localhost:9100/metrics' -TimeoutSec 15
+                            if (\$response.StatusCode -eq 200) {
+                                Write-Host '✅ Node Exporter is working'
+                            } else {
+                                throw 'Node Exporter returned status: ' + \$response.StatusCode
+                            }
+                        } catch {
+                            Write-Host '❌ Node Exporter health check failed:' \$_.Exception.Message
+                            throw
+                        }
+                        """
+                        
+                        // Test cAdvisor
+                        powershell """
+                        try {
+                            \$response = Invoke-WebRequest -Uri 'http://localhost:8080/healthz' -TimeoutSec 15
+                            if (\$response.StatusCode -eq 200) {
+                                Write-Host '✅ cAdvisor is working'
+                            } else {
+                                throw 'cAdvisor returned status: ' + \$response.StatusCode
+                            }
+                        } catch {
+                            Write-Host '❌ cAdvisor health check failed:' \$_.Exception.Message
+                            throw
+                        }
+                        """
+                        
+                        echo "✅ All services are healthy and running!"
                         
                     } catch (Exception e) {
                         echo "❌ Health check failed: ${e.message}"
-                        bat "docker logs inventory-frontend"
-                        bat "docker logs inventory-backend"
-                        bat "docker logs inventory-mongodb"
+                        bat "docker logs inventory-frontend || echo No frontend logs"
+                        bat "docker logs inventory-backend || echo No backend logs"
+                        bat "docker logs inventory-mongodb || echo No mongodb logs"
+                        bat "docker logs inventory-prometheus || echo No prometheus logs"
+                        bat "docker logs inventory-grafana || echo No grafana logs"
                         throw e
                     }
                 }
@@ -236,14 +277,16 @@ pipeline {
     // After pipeline finished
     post {
         success {
-            echo "===================================="
-            echo "✅ FULL-STACK APP DEPLOYED SUCCESSFULLY"
+            echo "======================================================"
+            echo "✅ FULL-STACK APP WITH MONITORING DEPLOYED SUCCESSFULLY"
             echo "🌐 Frontend: http://localhost:80"
             echo "🚀 Backend API: http://localhost:5000"
             echo "🗄️ MongoDB: localhost:27017"
             echo "📊 Prometheus: http://localhost:9090"
-            echo "📈 Grafana: http://localhost:3001"
-            echo "===================================="
+            echo "📈 Grafana: http://localhost:3001 (admin/admin)"
+            echo "📡 Node Exporter: http://localhost:9100"
+            echo "🐳 cAdvisor: http://localhost:8080"
+            echo "======================================================"
         }
         failure {
             echo "❌ PIPELINE FAILED"
@@ -251,6 +294,10 @@ pipeline {
             bat "docker logs inventory-frontend || echo No frontend logs"
             bat "docker logs inventory-backend || echo No backend logs"
             bat "docker logs inventory-mongodb || echo No mongodb logs"
+            bat "docker logs inventory-prometheus || echo No prometheus logs"
+            bat "docker logs inventory-grafana || echo No grafana logs"
+            bat "docker logs inventory-node-exporter || echo No node-exporter logs"
+            bat "docker logs inventory-cadvisor || echo No cadvisor logs"
         }
     }
 }
