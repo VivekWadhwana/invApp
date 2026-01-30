@@ -27,7 +27,7 @@ pipeline {
 
         stage('SonarQube Scan') {
             steps {
-                withSonarQubeEnv('sonarqube') {
+                withSonarQubeEnv('SonarQube') {
                     bat '''
                     sonar-scanner ^
                     -Dsonar.projectKey=vite-app ^
