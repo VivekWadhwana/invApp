@@ -3,11 +3,6 @@ pipeline {
     // Jenkins can run on any agent (Windows/Linux)
     agent any
 
-    // AUTO BUILD WITHOUT WEBHOOK (Poll GitHub every 5 min)
-    triggers {
-        pollSCM('* * * * *')
-    }
-
     // Environment variables
     environment {
         DOCKER_USER = "vivek170205"
