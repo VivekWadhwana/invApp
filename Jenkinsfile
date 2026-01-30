@@ -52,8 +52,16 @@ pipeline {
 
         stage('Docker Login') {
             steps {
-                withCredentials([usernamePassword(credentialsId: 'dockerhub-creds', usernameVariable: 'USER', passwordVariable: 'PASS')]) {
-                    bat "echo %PASS% | docker login -u %USER% --password-stdin"
+                script {
+                    try {
+                        withCredentials([usernamePassword(credentialsId: 'dockerhub-creds', usernameVariable: 'USER', passwordVariable: 'PASS')]) {
+                            bat "echo %PASS% | docker login -u %USER% --password-stdin"
+                        }
+                    } catch (Exception e) {
+                        echo "Docker login failed: ${e.getMessage()}"
+                        echo "Skipping Docker push and run stages"
+                        currentBuild.result = 'UNSTABLE'
+                    }
                 }
             }
         }
