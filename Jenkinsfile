@@ -99,9 +99,9 @@ pipeline {
                     echo '✅ Testing Frontend Accessibility...'
                     powershell '''
                         try {
-                            $response = Invoke-WebRequest -Uri "http://localhost" -UseBasicParsing -TimeoutSec 10 -ErrorAction Stop
+                            $response = Invoke-WebRequest -Uri "http://localhost:3000" -UseBasicParsing -TimeoutSec 10 -ErrorAction Stop
                             if ($response.StatusCode -eq 200) {
-                                Write-Host "✅ Frontend is running and accessible on http://localhost"
+                                Write-Host "✅ Frontend is running and accessible on http://localhost:3000"
                             }
                         } catch {
                             Write-Host "⚠️ Frontend endpoint test result: $_"
@@ -125,7 +125,7 @@ pipeline {
             echo '=================================='
             echo ''
             echo '📦 Deployed Service:'
-            echo '  ✅ Frontend (React + Vite + Nginx): http://localhost'
+            echo '  ✅ Frontend (React + Vite + Nginx): http://localhost:3000'
             echo ''
             echo '🐳 Docker Image:'
             echo "  • ${DOCKER_USER}/${FRONTEND_IMAGE}:latest"
@@ -139,7 +139,8 @@ pipeline {
             echo '  ✓ Frontend Deployment (docker-compose)'
             echo '  ✓ Health Checks & Validation'
             echo ''
-            echo '📍 Access your app at: http://localhost'
+            echo '📍 Access your app at: http://localhost:8080'
+                        echo '📍 Access your app at: http://localhost:3000'
             echo '🐳 Manage with: docker compose up/down'
             echo '=================================='
         }

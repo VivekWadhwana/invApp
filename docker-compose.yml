@@ -7,11 +7,11 @@ services:
       dockerfile: Dockerfile
     container_name: inventory-frontend
     ports:
-      - "80:80"
+      - "3000:80"
     networks:
       - inventory-network
     environment:
-      - VITE_API_URL=http://localhost:5000
+      - VITE_API_URL=http://localhost:3000
 
 networks:
   inventory-network:
