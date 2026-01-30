@@ -8,6 +8,7 @@ pipeline {
     environment {
         DOCKER_USER = "vivek170205"
         IMAGE_NAME = "vite-app"
+        SONAR_AUTH_TOKEN = credentials('sonar-token')
     }
 
     stages {
@@ -21,6 +22,20 @@ pipeline {
         stage('Build Vite Project') {
             steps {
                 bat 'npm run build'
+            }
+        }
+
+        stage('SonarQube Scan') {
+            steps {
+                withSonarQubeEnv('sonarqube') {
+                    bat '''
+                    sonar-scanner ^
+                    -Dsonar.projectKey=vite-app ^
+                    -Dsonar.sources=. ^
+                    -Dsonar.host.url=http://localhost:9000 ^
+                    -Dsonar.login=%SONAR_AUTH_TOKEN%
+                    '''
+                }
             }
         }
 
