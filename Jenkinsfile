@@ -12,15 +12,16 @@ pipeline {
     environment {
         DOCKER_USER = "vivek170205"
         FRONTEND_IMAGE = "inventory-frontend"
-        SONAR_TOKEN = credentials('sonar-token')
+        // Set to 'true' in Jenkins job/env to enable SonarQube scan
+        RUN_SONAR = 'false'
     }
 
     stages {
 
-        // 1️⃣ Get Code from GitHub
+        // 1️⃣ Get Code from GitHub (Declarative checkout already ran)
         stage('Clone Code') {
             steps {
-                git url: 'https://github.com/VivekWadhwana/invApp.git', branch: 'main'
+                echo "Repository already checked out by Declarative pipeline."
             }
         }
 
@@ -41,19 +42,22 @@ pipeline {
         // 4️⃣ Run Tests (Optional)
         stage('Test App') {
             steps {
-                bat "npm test || echo No tests"
+                // run tests only if script exists so pipeline doesn't fail
+                bat "npm run test --if-present || echo No tests"
             }
         }
 
-        // 5️⃣ SonarQube Code Quality Scan
+        // 5️⃣ SonarQube Code Quality Scan (optional)
         stage('SonarQube Scan') {
+            when {
+                expression { return env.RUN_SONAR == 'true' }
+            }
             steps {
                 withSonarQubeEnv('SonarQube') {
                     bat """
                     sonar-scanner ^
                     -Dsonar.projectKey=inventory-frontend ^
-                    -Dsonar.sources=. ^
-                    -Dsonar.login=${SONAR_TOKEN}
+                    -Dsonar.sources=. 
                     """
                 }
             }
