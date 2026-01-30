@@ -30,11 +30,10 @@ pipeline {
         stage('SonarQube Scan') {
             steps {
                 script {
-                    // Check if sonar-scanner is available
-                    def scannerHome = tool 'SonarScanner' // This requires SonarScanner to be configured in Jenkins
+                    def scannerHome = tool 'SonarScanner'
                     withSonarQubeEnv('SonarQube') {
                         bat """
-                        "%scannerHome%\bin\sonar-scanner.bat" ^
+                        "${scannerHome}\\bin\\sonar-scanner.bat" ^
                         -Dsonar.projectKey=vite-app ^
                         -Dsonar.sources=. ^
                         -Dsonar.host.url=http://localhost:9000 ^
