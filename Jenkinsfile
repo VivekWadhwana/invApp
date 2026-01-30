@@ -8,7 +8,6 @@ pipeline {
     environment {
         DOCKER_USER = "vivek170205"
         FRONTEND_IMAGE = "inventory-frontend"
-        BACKEND_IMAGE = "inventory-backend"
         SONAR_AUTH_TOKEN = credentials('sonar-token')
     }
 
@@ -20,37 +19,10 @@ pipeline {
             }
         }
 
-        stage('Install Backend Dependencies') {
-            steps {
-                dir('backend') {
-                    bat "npm install"
-                }
-            }
-        }
-
         stage('Lint & Test') {
-            parallel {
-                stage('Frontend Build') {
-                    steps {
-                        bat "npm run build"
-                    }
-                }
-                stage('Backend Tests') {
-                    steps {
-                        dir('backend') {
-                            echo '🧪 Running Backend Tests...'
-                            bat "npm run test"
-                        }
-                    }
-                }
-                stage('Backend Lint') {
-                    steps {
-                        dir('backend') {
-                            echo '🔍 Running Backend Linting...'
-                            bat "npm run lint"
-                        }
-                    }
-                }
+            steps {
+                echo '🔨 Building Frontend...'
+                bat "npm run build"
             }
         }
 
@@ -75,17 +47,8 @@ pipeline {
         }
 
         stage('Docker Build Images') {
-            parallel {
-                stage('Build Frontend') {
-                    steps {
-                        bat "docker build -t %DOCKER_USER%/%FRONTEND_IMAGE% ."
-                    }
-                }
-                stage('Build Backend') {
-                    steps {
-                        bat "docker build -t %DOCKER_USER%/%BACKEND_IMAGE% ./backend"
-                    }
-                }
+            steps {
+                bat "docker build -t %DOCKER_USER%/%FRONTEND_IMAGE% ."
             }
         }
 
@@ -98,37 +61,28 @@ pipeline {
         }
 
         stage('Docker Push Images') {
-            parallel {
-                stage('Push Frontend') {
-                    steps {
-                        bat "docker push %DOCKER_USER%/%FRONTEND_IMAGE%:latest"
-                    }
-                }
-                stage('Push Backend') {
-                    steps {
-                        bat "docker push %DOCKER_USER%/%BACKEND_IMAGE%:latest"
-                    }
-                }
+            steps {
+                bat "docker push %DOCKER_USER%/%FRONTEND_IMAGE%:latest"
             }
         }
 
         stage('Stop Previous Containers') {
             steps {
-                bat "docker compose down || exit 0"
+                bat "docker rm -f inventory-frontend || exit 0"
             }
         }
 
-        stage('Deploy Full Stack') {
+        stage('Docker Run') {
             steps {
-                bat "docker compose up -d"
+                bat "docker run -d -p 80:80 --name inventory-frontend %DOCKER_USER%/%FRONTEND_IMAGE%"
             }
         }
 
         stage('Health Check & Validation') {
             steps {
                 script {
-                    echo '⏳ Waiting for containers to start...'
-                    sleep(15)
+                    echo '⏳ Waiting for container to start...'
+                    sleep(5)
                     
                     echo '🔍 Checking Container Status...'
                     bat "docker ps"
@@ -136,28 +90,8 @@ pipeline {
                     echo '✅ Testing Frontend...'
                     powershell '''
                         $response = (Invoke-WebRequest -Uri "http://localhost:80" -UseBasicParsing -ErrorAction SilentlyContinue)
-                        if ($response.StatusCode -eq 200) { Write-Host "Frontend is accessible" } else { exit 1 }
+                        if ($response.StatusCode -eq 200) { Write-Host "✅ Frontend is accessible" } else { exit 1 }
                     '''
-                    
-                    echo '✅ Testing Backend API - Inventory Endpoint...'
-                    powershell '''
-                        $response = (Invoke-WebRequest -Uri "http://localhost:5000/api/inventory" -UseBasicParsing -ErrorAction SilentlyContinue)
-                        if ($response.StatusCode -eq 200) { Write-Host "Backend API is accessible" } else { exit 1 }
-                    '''
-                    
-                    echo '✅ Testing Backend API - Auth Endpoint...'
-                    powershell '''
-                        try {
-                            $body = @{ email = "admin@test.com"; password = "admin123" } | ConvertTo-Json
-                            $response = (Invoke-WebRequest -Uri "http://localhost:5000/api/auth/login" -Method POST -ContentType "application/json" -Body $body -UseBasicParsing -ErrorAction SilentlyContinue)
-                            Write-Host "Auth endpoint is accessible"
-                        } catch {
-                            Write-Host "Auth endpoint accessible (error expected for test)"
-                        }
-                    '''
-                    
-                    echo '✅ Testing MongoDB Connection...'
-                    bat "docker exec inventory-backend node -e \"const mongoose = require('mongoose'); mongoose.connect('mongodb://inventory-mongodb:27017/inventory').then(() => console.log('✅ MongoDB Connected')).catch(e => { console.log('⚠️ MongoDB check:', e.message); });\" || echo \"Backend container running\""
                     
                     echo '🎉 All Health Checks Passed!'
                 }
@@ -172,31 +106,22 @@ pipeline {
         }
         success {
             echo '=================================='
-            echo '🚀 FULL-STACK DEPLOYMENT SUCCESSFUL!'
+            echo '🚀 FRONTEND DEPLOYMENT SUCCESSFUL!'
             echo '=================================='
             echo ''
-            echo '📦 Deployed Services:'
+            echo '📦 Deployed Service:'
             echo '  ✅ Frontend (React + Vite + Nginx): http://localhost:80'
-            echo '  ✅ Backend API (Node.js + Express): http://localhost:5000'
-            echo '  ✅ Database (MongoDB): localhost:27017'
             echo ''
-            echo '🔗 API Endpoints:'
-            echo '  • GET  /api/inventory - List all products'
-            echo '  • POST /api/inventory - Add new product'
-            echo '  • POST /api/auth/login - User login'
-            echo '  • POST /api/auth/register - User registration'
-            echo ''
-            echo '🐳 Docker Images:'
+            echo '🐳 Docker Image:'
             echo "  • ${DOCKER_USER}/${FRONTEND_IMAGE}:latest"
-            echo "  • ${DOCKER_USER}/${BACKEND_IMAGE}:latest"
             echo ''
             echo '✅ Pipeline Stages Completed:'
             echo '  ✓ Dependencies Installation'
-            echo '  ✓ Backend Tests & Linting'
             echo '  ✓ Frontend Build'
             echo '  ✓ SonarQube Code Quality Scan'
-            echo '  ✓ Docker Build & Push'
-            echo '  ✓ Full-Stack Deployment'
+            echo '  ✓ Docker Build'
+            echo '  ✓ Docker Push'
+            echo '  ✓ Frontend Deployment'
             echo '  ✓ Health Checks & Validation'
             echo '=================================='
         }
@@ -206,15 +131,13 @@ pipeline {
             echo '=================================='
             echo ''
             echo '📋 Showing container logs...'
-            bat "docker compose logs --tail=100"
+            bat "docker logs inventory-frontend || exit 0"
             echo ''
             echo '🔍 Troubleshooting tips:'
-            echo '  1. Check if all containers are running: docker ps -a'
-            echo '  2. Check MongoDB connection: docker logs inventory-mongodb'
-            echo '  3. Check backend logs: docker logs inventory-backend'
-            echo '  4. Check frontend logs: docker logs inventory-frontend'
-            echo '  5. Verify port availability: netstat -ano | findstr "80 5000 27017"'
-            echo '  6. Check docker-compose file: docker compose config'
+            echo '  1. Check if container is running: docker ps -a'
+            echo '  2. Check frontend logs: docker logs inventory-frontend'
+            echo '  3. Verify port availability: netstat -ano | findstr "80"'
+            echo '  4. Check Docker resources: docker system df'
             echo '=================================='
         }
     }
