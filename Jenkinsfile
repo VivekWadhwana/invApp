@@ -7,15 +7,24 @@ pipeline {
 
     environment {
         DOCKER_USER = "vivek170205"
-        IMAGE_NAME = "vite-app"
+        FRONTEND_IMAGE = "inventory-frontend"
+        BACKEND_IMAGE = "inventory-backend"
         SONAR_AUTH_TOKEN = credentials('sonar-token')
     }
 
     stages {
 
-        stage('Install Dependencies') {
+        stage('Install Frontend Dependencies') {
             steps {
                 bat "npm install"
+            }
+        }
+
+        stage('Install Backend Dependencies') {
+            steps {
+                dir('backend') {
+                    bat "npm install"
+                }
             }
         }
 
@@ -32,7 +41,7 @@ pipeline {
                     withSonarQubeEnv('SonarQube') {
                         bat """
                         "${scannerHome}\\bin\\sonar-scanner.bat" ^
-                        -Dsonar.projectKey=vite-app ^
+                        -Dsonar.projectKey=inventory-fullstack ^
                         -Dsonar.sources=. ^
                         -Dsonar.host.url=http://localhost:9000 ^
                         -Dsonar.login=%SONAR_AUTH_TOKEN%
@@ -42,9 +51,18 @@ pipeline {
             }
         }
 
-        stage('Docker Build') {
-            steps {
-                bat "docker build -t %DOCKER_USER%/%IMAGE_NAME% ."
+        stage('Docker Build Images') {
+            parallel {
+                stage('Build Frontend') {
+                    steps {
+                        bat "docker build -t %DOCKER_USER%/%FRONTEND_IMAGE% ."
+                    }
+                }
+                stage('Build Backend') {
+                    steps {
+                        bat "docker build -t %DOCKER_USER%/%BACKEND_IMAGE% ./backend"
+                    }
+                }
             }
         }
 
@@ -56,22 +74,57 @@ pipeline {
             }
         }
 
-        stage('Docker Push') {
-            steps {
-                bat "docker push %DOCKER_USER%/%IMAGE_NAME%:latest"
+        stage('Docker Push Images') {
+            parallel {
+                stage('Push Frontend') {
+                    steps {
+                        bat "docker push %DOCKER_USER%/%FRONTEND_IMAGE%:latest"
+                    }
+                }
+                stage('Push Backend') {
+                    steps {
+                        bat "docker push %DOCKER_USER%/%BACKEND_IMAGE%:latest"
+                    }
+                }
             }
         }
 
-        stage('Stop Previous Container') {
+        stage('Stop Previous Containers') {
             steps {
-                bat "docker rm -f vite-container || exit 0"
+                bat "docker compose down || exit 0"
             }
         }
 
-        stage('Docker Run') {
+        stage('Deploy Full Stack') {
             steps {
-                bat "docker run -d -p 80:80 --name vite-container %DOCKER_USER%/%IMAGE_NAME%:latest"
+                bat "docker compose up -d"
             }
+        }
+
+        stage('Health Check') {
+            steps {
+                script {
+                    sleep(10) // Wait for containers to start
+                    bat "curl -f http://localhost:80 || exit 1"
+                    bat "curl -f http://localhost:5000/api/inventory || exit 1"
+                }
+            }
+        }
+    }
+
+    post {
+        always {
+            bat "docker system prune -f"
+        }
+        success {
+            echo '🚀 Full-Stack Deployment Successful!'
+            echo 'Frontend: http://localhost:80'
+            echo 'Backend API: http://localhost:5000'
+            echo 'MongoDB: localhost:27017'
+        }
+        failure {
+            echo '❌ Deployment Failed!'
+            bat "docker compose logs"
         }
     }
 }
