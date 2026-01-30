@@ -140,7 +140,7 @@ pipeline {
                     bat "curl -f http://localhost:5000/api/inventory || exit 1"
                     
                     echo '✅ Testing Backend API - Auth Endpoint...'
-                    bat "curl -f -X POST http://localhost:5000/api/auth/login -H \"Content-Type: application/json\" -d \"{\\\"email\\\":\\\"test@test.com\\\",\\\"password\\\":\\\"test\\\"}\" || echo \"Auth endpoint accessible\""
+                    bat "curl -X POST http://localhost:5000/api/auth/login -H \"Content-Type: application/json\" -d \"{\\\"email\\\":\\\"admin@test.com\\\",\\\"password\\\":\\\"admin123\\\"}\" || echo \"Auth endpoint accessible\""
                     
                     echo '✅ Testing MongoDB Connection...'
                     bat "docker exec inventory-backend node -e \"const mongoose = require('mongoose'); console.log('MongoDB check complete');\" || echo \"Backend container running\""
