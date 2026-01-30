@@ -1,0 +1,2 @@
+/* Compatibility fallback: import the main index.css so requests to /src/style.css succeed */
+@import './index.css';

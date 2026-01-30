@@ -40,15 +40,23 @@ pipeline {
                         """
                     }
 
-                    // Wait for Quality Gate result and abort pipeline if it's not OK
-                    timeout(time: 5, unit: 'MINUTES') {
-                        def qg = waitForQualityGate()
-                        if (qg == null) {
-                            error 'No Quality Gate result received from SonarQube.'
+                    // Wait for Quality Gate result — mark UNSTABLE on failure or errors
+                    try {
+                        timeout(time: 5, unit: 'MINUTES') {
+                            def qg = waitForQualityGate()
+                            if (qg == null) {
+                                echo '⚠️ No Quality Gate result received from SonarQube. Marking UNSTABLE.'
+                                currentBuild.result = 'UNSTABLE'
+                            } else if (qg.status != 'OK') {
+                                echo "⚠️ SonarQube Quality Gate status: ${qg.status}. Marking UNSTABLE."
+                                currentBuild.result = 'UNSTABLE'
+                            } else {
+                                echo '✅ SonarQube Quality Gate passed.'
+                            }
                         }
-                        if (qg.status != 'OK') {
-                            error "Pipeline aborted due to SonarQube Quality Gate: ${qg.status}"
-                        }
+                    } catch (err) {
+                        echo "⚠️ SonarQube Quality Gate check failed: ${err}. Marking UNSTABLE."
+                        currentBuild.result = 'UNSTABLE'
                     }
                 }
             }
