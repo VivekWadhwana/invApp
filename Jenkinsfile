@@ -51,15 +51,18 @@ pipeline {
             }
             steps {
                                 withSonarQubeEnv('SonarQube') {
-                                        // Use Dockerized SonarScanner to avoid relying on agent-installed binary
+                                        // Use Dockerized SonarScanner; replace localhost with host.docker.internal
+                                        // so the container can reach the host Sonar instance on Docker for Windows.
                                         bat """
-                                        docker run --rm \
-                                            -e SONAR_HOST_URL=%SONAR_HOST_URL% \
-                                            -e SONAR_LOGIN=%SONAR_TOKEN% \
-                                            -v %WORKSPACE%:/usr/src \
-                                            sonarsource/sonar-scanner-cli \
-                                            -Dsonar.projectKey=inventory-frontend \
-                                            -Dsonar.sources=/usr/src \
+                                        rem translate localhost -> host.docker.internal for container access
+                                        set "SCANNER_HOST=%SONAR_HOST_URL:localhost=host.docker.internal%"
+                                        docker run --rm ^
+                                            -e SONAR_HOST_URL=%SCANNER_HOST% ^
+                                            -e SONAR_LOGIN=%SONAR_TOKEN% ^
+                                            -v %WORKSPACE%:/usr/src ^
+                                            sonarsource/sonar-scanner-cli ^
+                                            -Dsonar.projectKey=inventory-frontend ^
+                                            -Dsonar.sources=/usr/src ^
                                             -Dsonar.login=%SONAR_TOKEN%
                                         """
                                 }
