@@ -1,41 +1,12 @@
-# Prometheus Configuration for Inventory App Monitoring
-
 global:
   scrape_interval: 15s
-  evaluation_interval: 15s
-  external_labels:
-    monitor: 'inventory-monitor'
 
-# Alertmanager configuration
-alerting:
-  alertmanagers:
-    - static_configs:
-        - targets: []
-
-# Load rules once and periodically evaluate them
-rule_files: []
-
-# Scrape configurations
 scrape_configs:
-  # Prometheus itself
-  - job_name: 'prometheus'
+  - job_name: "jenkins"
+    metrics_path: "/prometheus"
     static_configs:
-      - targets: ['localhost:9090']
+      - targets: ["host.docker.internal:8080"]
 
-  # Docker metrics (if cAdvisor is available)
-  - job_name: 'docker'
+  - job_name: "docker"
     static_configs:
-      - targets: ['localhost:8080']
-    relabel_configs:
-      - source_labels: [__address__]
-        target_label: instance
-    metric_relabel_configs:
-      - source_labels: [__name__]
-        regex: 'container_.*'
-        action: keep
-
-  # Node Exporter (system metrics) - optional
-  - job_name: 'node-exporter'
-    static_configs:
-      - targets: ['localhost:9100']
-    scrape_interval: 10s
+      - targets: ["host.docker.internal:9323"]
