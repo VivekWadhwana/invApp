@@ -70,7 +70,7 @@ pipeline {
 
         stage('Docker Run') {
             steps {
-                bat "docker run -d -p 8080:80 --name vite-container %DOCKER_USER%/%IMAGE_NAME%:latest"
+                bat "docker run -d -p 80:80 --name vite-container %DOCKER_USER%/%IMAGE_NAME%:latest"
             }
         }
     }
