@@ -20,7 +20,7 @@ pipeline {
         // 1️⃣ Get Code from GitHub
         stage('Clone Code') {
             steps {
-                git 'https://github.com/your-username/your-repo.git'
+                git url: 'https://github.com/VivekWadhwana/invApp.git', branch: 'main'
             }
         }
 
