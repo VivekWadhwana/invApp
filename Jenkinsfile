@@ -154,6 +154,52 @@ pipeline {
         // 9️⃣ Deploy Full Stack with Monitoring
         stage('Deploy Full Stack') {
             steps {
+                script {
+                    // Check and assign available ports
+                    powershell """
+                    function Test-Port {
+                        param([int]\$Port)
+                        try {
+                            \$listener = [System.Net.Sockets.TcpListener]::new([System.Net.IPAddress]::Any, \$Port)
+                            \$listener.Start()
+                            \$listener.Stop()
+                            return \$true
+                        } catch {
+                            return \$false
+                        }
+                    }
+                    
+                    function Find-AvailablePort {
+                        param([int]\$BasePort)
+                        \$port = \$BasePort
+                        while (-not (Test-Port \$port)) {
+                            \$port++
+                            if (\$port -gt (\$BasePort + 100)) {
+                                throw "No available ports found in range \$BasePort-\$(\$BasePort + 100)"
+                            }
+                        }
+                        return \$port
+                    }
+                    
+                    \$env:FRONTEND_PORT = Find-AvailablePort 80
+                    \$env:BACKEND_PORT = Find-AvailablePort 5000
+                    \$env:MONGODB_PORT = Find-AvailablePort 27017
+                    \$env:PROMETHEUS_PORT = Find-AvailablePort 9090
+                    \$env:GRAFANA_PORT = Find-AvailablePort 3001
+                    \$env:NODE_EXPORTER_PORT = Find-AvailablePort 9100
+                    \$env:CADVISOR_PORT = Find-AvailablePort 8081
+                    
+                    Write-Host "Available ports assigned:"
+                    Write-Host "Frontend: \$env:FRONTEND_PORT"
+                    Write-Host "Backend: \$env:BACKEND_PORT"
+                    Write-Host "MongoDB: \$env:MONGODB_PORT"
+                    Write-Host "Prometheus: \$env:PROMETHEUS_PORT"
+                    Write-Host "Grafana: \$env:GRAFANA_PORT"
+                    Write-Host "Node Exporter: \$env:NODE_EXPORTER_PORT"
+                    Write-Host "cAdvisor: \$env:CADVISOR_PORT"
+                    """
+                }
+                
                 bat "docker compose up -d"
                 // Wait for all services to start
                 bat "timeout /t 30 /nobreak"
@@ -171,14 +217,15 @@ pipeline {
                         // Test Frontend
                         powershell """
                         try {
-                            \$response = Invoke-WebRequest -Uri 'http://localhost:80' -TimeoutSec 15
+                            \$frontendPort = if (\$env:FRONTEND_PORT) { \$env:FRONTEND_PORT } else { 80 }
+                            \$response = Invoke-WebRequest -Uri "http://localhost:\$frontendPort" -TimeoutSec 15
                             if (\$response.StatusCode -eq 200) {
-                                Write-Host '✅ Frontend is accessible'
+                                Write-Host "✅ Frontend is accessible on port \$frontendPort"
                             } else {
-                                throw 'Frontend returned status: ' + \$response.StatusCode
+                                throw "Frontend returned status: " + \$response.StatusCode
                             }
                         } catch {
-                            Write-Host '❌ Frontend health check failed:' \$_.Exception.Message
+                            Write-Host "❌ Frontend health check failed:" \$_.Exception.Message
                             throw
                         }
                         """
@@ -186,14 +233,15 @@ pipeline {
                         // Test Backend API - Inventory endpoint
                         powershell """
                         try {
-                            \$response = Invoke-WebRequest -Uri 'http://localhost:5000/api/inventory' -TimeoutSec 15
+                            \$backendPort = if (\$env:BACKEND_PORT) { \$env:BACKEND_PORT } else { 5000 }
+                            \$response = Invoke-WebRequest -Uri "http://localhost:\$backendPort/api/inventory" -TimeoutSec 15
                             if (\$response.StatusCode -eq 200) {
-                                Write-Host '✅ Backend Inventory API is working'
+                                Write-Host "✅ Backend Inventory API is working on port \$backendPort"
                             } else {
-                                throw 'Backend API returned status: ' + \$response.StatusCode
+                                throw "Backend API returned status: " + \$response.StatusCode
                             }
                         } catch {
-                            Write-Host '❌ Backend Inventory API health check failed:' \$_.Exception.Message
+                            Write-Host "❌ Backend Inventory API health check failed:" \$_.Exception.Message
                             throw
                         }
                         """
@@ -201,14 +249,15 @@ pipeline {
                         // Test Prometheus
                         powershell """
                         try {
-                            \$response = Invoke-WebRequest -Uri 'http://localhost:9090/-/healthy' -TimeoutSec 15
+                            \$prometheusPort = if (\$env:PROMETHEUS_PORT) { \$env:PROMETHEUS_PORT } else { 9090 }
+                            \$response = Invoke-WebRequest -Uri "http://localhost:\$prometheusPort/-/healthy" -TimeoutSec 15
                             if (\$response.StatusCode -eq 200) {
-                                Write-Host '✅ Prometheus is healthy'
+                                Write-Host "✅ Prometheus is healthy on port \$prometheusPort"
                             } else {
-                                throw 'Prometheus returned status: ' + \$response.StatusCode
+                                throw "Prometheus returned status: " + \$response.StatusCode
                             }
                         } catch {
-                            Write-Host '❌ Prometheus health check failed:' \$_.Exception.Message
+                            Write-Host "❌ Prometheus health check failed:" \$_.Exception.Message
                             throw
                         }
                         """
@@ -216,14 +265,15 @@ pipeline {
                         // Test Grafana
                         powershell """
                         try {
-                            \$response = Invoke-WebRequest -Uri 'http://localhost:3001/api/health' -TimeoutSec 15
+                            \$grafanaPort = if (\$env:GRAFANA_PORT) { \$env:GRAFANA_PORT } else { 3001 }
+                            \$response = Invoke-WebRequest -Uri "http://localhost:\$grafanaPort/api/health" -TimeoutSec 15
                             if (\$response.StatusCode -eq 200) {
-                                Write-Host '✅ Grafana is healthy'
+                                Write-Host "✅ Grafana is healthy on port \$grafanaPort"
                             } else {
-                                throw 'Grafana returned status: ' + \$response.StatusCode
+                                throw "Grafana returned status: " + \$response.StatusCode
                             }
                         } catch {
-                            Write-Host '❌ Grafana health check failed:' \$_.Exception.Message
+                            Write-Host "❌ Grafana health check failed:" \$_.Exception.Message
                             throw
                         }
                         """
@@ -231,14 +281,15 @@ pipeline {
                         // Test Node Exporter
                         powershell """
                         try {
-                            \$response = Invoke-WebRequest -Uri 'http://localhost:9100/metrics' -TimeoutSec 15
+                            \$nodePort = if (\$env:NODE_EXPORTER_PORT) { \$env:NODE_EXPORTER_PORT } else { 9100 }
+                            \$response = Invoke-WebRequest -Uri "http://localhost:\$nodePort/metrics" -TimeoutSec 15
                             if (\$response.StatusCode -eq 200) {
-                                Write-Host '✅ Node Exporter is working'
+                                Write-Host "✅ Node Exporter is working on port \$nodePort"
                             } else {
-                                throw 'Node Exporter returned status: ' + \$response.StatusCode
+                                throw "Node Exporter returned status: " + \$response.StatusCode
                             }
                         } catch {
-                            Write-Host '❌ Node Exporter health check failed:' \$_.Exception.Message
+                            Write-Host "❌ Node Exporter health check failed:" \$_.Exception.Message
                             throw
                         }
                         """
@@ -246,14 +297,15 @@ pipeline {
                         // Test cAdvisor
                         powershell """
                         try {
-                            \$response = Invoke-WebRequest -Uri 'http://localhost:8080/healthz' -TimeoutSec 15
+                            \$cadvisorPort = if (\$env:CADVISOR_PORT) { \$env:CADVISOR_PORT } else { 8081 }
+                            \$response = Invoke-WebRequest -Uri "http://localhost:\$cadvisorPort/healthz" -TimeoutSec 15
                             if (\$response.StatusCode -eq 200) {
-                                Write-Host '✅ cAdvisor is working'
+                                Write-Host "✅ cAdvisor is working on port \$cadvisorPort"
                             } else {
-                                throw 'cAdvisor returned status: ' + \$response.StatusCode
+                                throw "cAdvisor returned status: " + \$response.StatusCode
                             }
                         } catch {
-                            Write-Host '❌ cAdvisor health check failed:' \$_.Exception.Message
+                            Write-Host "❌ cAdvisor health check failed:" \$_.Exception.Message
                             throw
                         }
                         """
@@ -277,16 +329,26 @@ pipeline {
     // After pipeline finished
     post {
         success {
-            echo "======================================================"
-            echo "✅ FULL-STACK APP WITH MONITORING DEPLOYED SUCCESSFULLY"
-            echo "🌐 Frontend: http://localhost:80"
-            echo "🚀 Backend API: http://localhost:5000"
-            echo "🗄️ MongoDB: localhost:27017"
-            echo "📊 Prometheus: http://localhost:9090"
-            echo "📈 Grafana: http://localhost:3001 (admin/admin)"
-            echo "📡 Node Exporter: http://localhost:9100"
-            echo "🐳 cAdvisor: http://localhost:8080"
-            echo "======================================================"
+            script {
+                def frontendPort = env.FRONTEND_PORT ?: '80'
+                def backendPort = env.BACKEND_PORT ?: '5000'
+                def mongoPort = env.MONGODB_PORT ?: '27017'
+                def prometheusPort = env.PROMETHEUS_PORT ?: '9090'
+                def grafanaPort = env.GRAFANA_PORT ?: '3001'
+                def nodePort = env.NODE_EXPORTER_PORT ?: '9100'
+                def cadvisorPort = env.CADVISOR_PORT ?: '8081'
+                
+                echo "======================================================"
+                echo "✅ FULL-STACK APP WITH MONITORING DEPLOYED SUCCESSFULLY"
+                echo "🌐 Frontend: http://localhost:${frontendPort}"
+                echo "🚀 Backend API: http://localhost:${backendPort}"
+                echo "🗄️ MongoDB: localhost:${mongoPort}"
+                echo "📊 Prometheus: http://localhost:${prometheusPort}"
+                echo "📈 Grafana: http://localhost:${grafanaPort} (admin/admin)"
+                echo "📡 Node Exporter: http://localhost:${nodePort}"
+                echo "🐳 cAdvisor: http://localhost:${cadvisorPort}"
+                echo "======================================================"
+            }
         }
         failure {
             echo "❌ PIPELINE FAILED"
