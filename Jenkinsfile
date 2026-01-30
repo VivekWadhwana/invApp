@@ -3,8 +3,6 @@ pipeline {
 
     tools {
         nodejs "node"
-        // Add SonarScanner tool - configure this in Jenkins Global Tool Configuration
-        // sonarQubeScanner "SonarScanner"
     }
 
     environment {
@@ -17,13 +15,13 @@ pipeline {
 
         stage('Install Dependencies') {
             steps {
-                bat 'npm install'
+                bat "npm install"
             }
         }
 
         stage('Build Vite Project') {
             steps {
-                bat 'npm run build'
+                bat "npm run build"
             }
         }
 
@@ -52,35 +50,27 @@ pipeline {
 
         stage('Docker Login') {
             steps {
-                script {
-                    try {
-                        withCredentials([usernamePassword(credentialsId: 'dockerhub-creds', usernameVariable: 'USER', passwordVariable: 'PASS')]) {
-                            bat "docker login -u %USER% -p %PASS%"
-                        }
-                    } catch (Exception e) {
-                        echo "Docker login failed: ${e.getMessage()}"
-                        echo "Skipping Docker push and run stages"
-                        currentBuild.result = 'UNSTABLE'
-                    }
+                withCredentials([usernamePassword(credentialsId: 'dockerhub-creds', usernameVariable: 'USER', passwordVariable: 'PASS')]) {
+                    bat "docker login -u %USER% -p %PASS%"
                 }
             }
         }
 
         stage('Docker Push') {
             steps {
-                bat "docker push vivek170205/vite-app:latest
+                bat "docker push %DOCKER_USER%/%IMAGE_NAME%:latest"
             }
         }
 
         stage('Stop Previous Container') {
             steps {
-                bat 'docker rm -f vite-container || exit 0'
+                bat "docker rm -f vite-container || exit 0"
             }
         }
 
         stage('Docker Run') {
             steps {
-                bat "docker run -d -p 80:80 --name vite-container %DOCKER_USER%/%IMAGE_NAME%"
+                bat "docker run -d -p 8080:80 --name vite-container %DOCKER_USER%/%IMAGE_NAME%:latest"
             }
         }
     }
