@@ -12,8 +12,10 @@ pipeline {
     environment {
         DOCKER_USER = "vivek170205"
         FRONTEND_IMAGE = "inventory-frontend"
-        // Set to 'true' in Jenkins job/env to enable SonarQube scan
-        RUN_SONAR = 'false'
+        // Sonar token credential (create a Secret Text credential named 'sonar-token')
+        SONAR_TOKEN = credentials('sonar-token')
+        // Enable SonarQube stage by setting to 'true'
+        RUN_SONAR = 'true'
     }
 
     stages {
@@ -57,7 +59,8 @@ pipeline {
                     bat """
                     sonar-scanner ^
                     -Dsonar.projectKey=inventory-frontend ^
-                    -Dsonar.sources=. 
+                    -Dsonar.sources=. ^
+                    -Dsonar.login=${SONAR_TOKEN}
                     """
                 }
             }
