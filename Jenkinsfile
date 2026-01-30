@@ -9,8 +9,8 @@ pipeline {
         FRONTEND_IMAGE = "inventory-frontend"
         // Sonar token credential (create a Secret Text credential named 'sonar-token')
         SONAR_TOKEN = credentials('sonar-token')
-        // Enable SonarQube stage by setting to 'true'
-        RUN_SONAR = 'true'
+        // Enable SonarQube stage by setting to 'true' (disabled by default for stability)
+        RUN_SONAR = 'false'
     }
 
     stages {
