@@ -29,19 +29,27 @@ pipeline {
         stage('SonarQube Scan') {
             steps {
                 script {
-                    catchError(buildResult: 'SUCCESS', stageResult: 'UNSTABLE') {
-                        def scannerHome = tool 'SonarScanner'
-                        withSonarQubeEnv('SonarQube') {
-                            bat """
-                            "${scannerHome}\\bin\\sonar-scanner.bat" ^
-                            -Dsonar.projectKey=inventory-fullstack ^
-                            -Dsonar.sources=. ^
-                            -Dsonar.host.url=http://localhost:9000 ^
-                            -Dsonar.login=%SONAR_AUTH_TOKEN%
-                            """
+                    def scannerHome = tool 'SonarScanner'
+                    withSonarQubeEnv('SonarQube') {
+                        bat """
+                        "${scannerHome}\\bin\\sonar-scanner.bat" ^
+                        -Dsonar.projectKey=inventory-fullstack ^
+                        -Dsonar.sources=. ^
+                        -Dsonar.host.url=http://localhost:9000 ^
+                        -Dsonar.token=%SONAR_AUTH_TOKEN%
+                        """
+                    }
+
+                    // Wait for Quality Gate result and abort pipeline if it's not OK
+                    timeout(time: 5, unit: 'MINUTES') {
+                        def qg = waitForQualityGate()
+                        if (qg == null) {
+                            error 'No Quality Gate result received from SonarQube.'
+                        }
+                        if (qg.status != 'OK') {
+                            error "Pipeline aborted due to SonarQube Quality Gate: ${qg.status}"
                         }
                     }
-                    echo '⚠️  SonarQube scan completed (check results for any issues)'
                 }
             }
         }
@@ -87,31 +95,7 @@ pipeline {
             }
         }
 
-        stage('Health Check & Validation') {
-            steps {
-                script {
-                    echo '⏳ Waiting for container to start...'
-                    sleep(8)
-                    
-                    echo '🔍 Checking Container Status...'
-                    bat "docker ps --filter 'name=inventory-frontend'"
-                    
-                    echo '✅ Testing Frontend Accessibility...'
-                    powershell '''
-                        try {
-                            $response = Invoke-WebRequest -Uri "http://localhost:3000" -UseBasicParsing -TimeoutSec 10 -ErrorAction Stop
-                            if ($response.StatusCode -eq 200) {
-                                Write-Host "✅ Frontend is running and accessible on http://localhost:3000"
-                            }
-                        } catch {
-                            Write-Host "⚠️ Frontend endpoint test result: $_"
-                        }
-                    '''
-                    
-                    echo '🎉 Health Check Completed!'
-                }
-            }
-        }
+        // Health Check & Validation stage removed per request
     }
 
     post {
@@ -137,10 +121,8 @@ pipeline {
             echo '  ✓ Docker Build'
             echo '  ✓ Docker Push to Registry'
             echo '  ✓ Frontend Deployment (docker-compose)'
-            echo '  ✓ Health Checks & Validation'
             echo ''
-            echo '📍 Access your app at: http://localhost:8080'
-                        echo '📍 Access your app at: http://localhost:3000'
+            echo '📍 Access your app at: http://localhost:3000'
             echo '🐳 Manage with: docker compose up/down'
             echo '=================================='
         }
