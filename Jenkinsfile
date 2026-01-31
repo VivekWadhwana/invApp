@@ -36,11 +36,13 @@ pipeline {
                 }
                 
                 timeout(time: 5, unit: 'MINUTES') {
-                    def qg = waitForQualityGate()
-                    if (qg.status != 'OK') {
-                        echo "Quality Gate failed: ${qg.status}"
-                    } else {
-                        echo "Quality Gate passed: ${qg.status}"
+                    script {
+                        def qg = waitForQualityGate()
+                        if (qg.status != 'OK') {
+                            echo "Quality Gate failed: ${qg.status}"
+                        } else {
+                            echo "Quality Gate passed: ${qg.status}"
+                        }
                     }
                 }
             }
