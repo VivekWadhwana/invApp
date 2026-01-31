@@ -37,6 +37,7 @@ pipeline {
                         }
                     } catch (Exception e) {
                         echo "SonarQube scan failed: ${e.message}"
+                        currentBuild.result = 'UNSTABLE'
                     }
                 }
             }
