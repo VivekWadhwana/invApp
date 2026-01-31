@@ -10,15 +10,6 @@ pipeline {
         }
         
         stage('SonarQube') {
-            when {
-                expression { 
-                    try {
-                        return env.SONAR_HOST_URL != null && env.SONAR_HOST_URL != ''
-                    } catch (Exception e) {
-                        return false
-                    }
-                }
-            }
             steps {
                 script {
                     try {
@@ -26,7 +17,7 @@ pipeline {
                             withCredentials([string(credentialsId: 'sonar-token', variable: 'SONAR_TOKEN')]) {
                                 bat """
                                 docker run --rm ^
-                                    -e SONAR_HOST_URL=%SONAR_HOST_URL% ^
+                                    -e SONAR_HOST_URL=http://localhost:9000 ^
                                     -e SONAR_LOGIN=%SONAR_TOKEN% ^
                                     -v %WORKSPACE%:/usr/src ^
                                     -w /usr/src ^
