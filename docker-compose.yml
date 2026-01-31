@@ -27,7 +27,7 @@ services:
     image: amir20/dozzle:latest
     container_name: inventory-dozzle
     ports:
-      - "8080:8080"
+      - "8081:8080"
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
     networks:

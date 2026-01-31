@@ -69,7 +69,7 @@ pipeline {
         success {
             echo "✅ Frontend deployed: http://localhost:3000"
             echo "🐳 Portainer: http://localhost:9001"
-            echo "📜 Dozzle: http://localhost:8080"
+            echo "📜 Dozzle: http://localhost:8081"
         }
         failure {
             bat "docker ps -a"
