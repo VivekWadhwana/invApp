@@ -21,6 +21,16 @@ services:
     networks:
       - inventory-network
 
+  grafana:
+    image: grafana/grafana:latest
+    container_name: inventory-grafana
+    ports:
+      - "3001:3000"
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+    networks:
+      - inventory-network
+
 networks:
   inventory-network:
     driver: bridge

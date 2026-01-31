@@ -47,7 +47,7 @@ pipeline {
         stage('Deploy') {
             steps {
                 bat "docker compose down --remove-orphans || echo No containers"
-                bat "docker compose up -d frontend prometheus"
+                bat "docker compose up -d frontend prometheus grafana"
                 powershell "Start-Sleep -Seconds 10"
             }
         }
@@ -57,6 +57,7 @@ pipeline {
         success {
             echo "✅ Frontend deployed: http://localhost:3000"
             echo "📊 Prometheus: http://localhost:9090"
+            echo "📈 Grafana: http://localhost:3001 (admin/admin)"
         }
         failure {
             bat "docker ps -a"
