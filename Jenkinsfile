@@ -55,17 +55,21 @@ pipeline {
         stage('Deploy') {
             steps {
                 bat "docker compose down --remove-orphans || echo No containers"
-                bat "docker compose up -d frontend portainer dozzle"
-                powershell "Start-Sleep -Seconds 10"
+                bat "docker compose up -d frontend grafana prometheus cadvisor node-exporter portainer dozzle"
+                powershell "Start-Sleep -Seconds 15"
             }
         }
     }
     
     post {
         success {
-            echo "✅ Frontend deployed: http://localhost"
+            echo "✅ Frontend deployed: http://localhost:3000"
+            echo "📊 Grafana Dashboard: http://localhost:3001 (admin/admin)"
+            echo "📈 Prometheus: http://localhost:9090"
             echo "🐳 Portainer: http://localhost:9001"
-            echo "📜 Dozzle: http://localhost:8081"
+            echo "📜 Dozzle Logs: http://localhost:8081"
+            echo "📊 cAdvisor: http://localhost:8080"
+            echo "📊 Node Exporter: http://localhost:9100"
         }
         failure {
             echo "❌ Deployment failed"
