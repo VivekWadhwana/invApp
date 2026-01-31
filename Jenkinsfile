@@ -22,9 +22,21 @@ pipeline {
                                     -v %WORKSPACE%:/usr/src ^
                                     sonarsource/sonar-scanner-cli ^
                                     -Dsonar.projectKey=inventory-frontend ^
-                                    -Dsonar.sources=/usr/src ^
-                                    -Dsonar.token=%SONAR_TOKEN%
+                                    -Dsonar.projectName="Inventory Frontend" ^
+                                    -Dsonar.sources=src ^
+                                    -Dsonar.exclusions=node_modules/**,dist/**,build/** ^
+                                    -Dsonar.javascript.lcov.reportPaths=coverage/lcov.info ^
+                                    -Dsonar.token=%SONAR_TOKEN% ^
+                                    -Dsonar.verbose=true
                                 """
+                            }
+                        }
+                        
+                        // Wait for quality gate
+                        timeout(time: 5, unit: 'MINUTES') {
+                            def qg = waitForQualityGate()
+                            if (qg.status != 'OK') {
+                                echo "Quality Gate failed: ${qg.status}"
                             }
                         }
                     } catch (Exception e) {
@@ -47,7 +59,7 @@ pipeline {
         stage('Deploy') {
             steps {
                 bat "docker compose down --remove-orphans || echo No containers"
-                bat "docker compose up -d frontend portainer"
+                bat "docker compose up -d frontend portainer dozzle"
                 powershell "Start-Sleep -Seconds 10"
             }
         }
@@ -57,6 +69,7 @@ pipeline {
         success {
             echo "✅ Frontend deployed: http://localhost:3000"
             echo "🐳 Portainer: http://localhost:9001"
+            echo "📜 Dozzle: http://localhost:8080"
         }
         failure {
             bat "docker ps -a"

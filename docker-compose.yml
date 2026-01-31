@@ -23,6 +23,17 @@ services:
       - inventory-network
     restart: unless-stopped
 
+  dozzle:
+    image: amir20/dozzle:latest
+    container_name: inventory-dozzle
+    ports:
+      - "8080:8080"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    networks:
+      - inventory-network
+    restart: unless-stopped
+
 volumes:
   portainer_data:
 
