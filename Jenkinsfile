@@ -1,6 +1,10 @@
 pipeline {
     agent any
     
+    environment {
+        IMAGE_NAME = "vivek170205/inventory-frontend"
+    }
+    
     stages {
         stage('Build') {
             steps {
@@ -9,51 +13,32 @@ pipeline {
             }
         }
         
-        stage('SonarQube') {
+        stage('SonarQube Scan') {
             steps {
-                withSonarQubeEnv('SonarQube') {
-                    withCredentials([string(credentialsId: 'sonar-token', variable: 'SONAR_TOKEN')]) {
-                        bat """
-                        docker run --rm ^
-                            -e SONAR_HOST_URL=http://localhost:9000 ^
-                            -e SONAR_LOGIN=%SONAR_TOKEN% ^
-                            -v %WORKSPACE%:/usr/src ^
-                            -w /usr/src ^
-                            sonarsource/sonar-scanner-cli ^
-                            -Dsonar.projectKey=inventory-frontend ^
-                            -Dsonar.projectName="Inventory Frontend" ^
-                            -Dsonar.projectVersion=1.0 ^
-                            -Dsonar.sources=src ^
-                            -Dsonar.exclusions="node_modules/**,dist/**,build/**,coverage/**,*.config.js,*.config.ts" ^
-                            -Dsonar.sourceEncoding=UTF-8 ^
-                            -Dsonar.javascript.file.suffixes=".js,.jsx" ^
-                            -Dsonar.typescript.file.suffixes=".ts,.tsx" ^
-                            -Dsonar.css.file.suffixes=".css,.scss,.sass" ^
-                            -Dsonar.html.file.suffixes=".html,.htm" ^
-                            -Dsonar.token=%SONAR_TOKEN%
-                        """
-                    }
-                }
-                
-                timeout(time: 5, unit: 'MINUTES') {
-                    script {
-                        def qg = waitForQualityGate()
-                        if (qg.status != 'OK') {
-                            echo "Quality Gate failed: ${qg.status}"
-                        } else {
-                            echo "Quality Gate passed: ${qg.status}"
-                        }
-                    }
+                withCredentials([string(credentialsId: 'sonar-token', variable: 'SONAR_TOKEN')]) {
+                    bat """
+                    docker run --rm ^
+                        -e SONAR_HOST_URL=http://host.docker.internal:9000 ^
+                        -e SONAR_TOKEN=%SONAR_TOKEN% ^
+                        -v %WORKSPACE%:/usr/src ^
+                        -w /usr/src ^
+                        sonarsource/sonar-scanner-cli ^
+                        -Dsonar.projectKey=inventory-frontend ^
+                        -Dsonar.projectName=Inventory-Frontend ^
+                        -Dsonar.sources=src ^
+                        -Dsonar.exclusions=node_modules/**,dist/**,build/** ^
+                        -Dsonar.sourceEncoding=UTF-8
+                    """
                 }
             }
         }
         
-        stage('Docker') {
+        stage('Docker Build & Push') {
             steps {
-                bat "docker build -t vivek170205/inventory-frontend:latest ."
+                bat "docker build -t %IMAGE_NAME%:latest ."
                 withCredentials([usernamePassword(credentialsId: 'dockerhub-creds', usernameVariable: 'USER', passwordVariable: 'PASS')]) {
                     bat "echo %PASS% | docker login -u %USER% --password-stdin"
-                    bat "docker push vivek170205/inventory-frontend:latest"
+                    bat "docker push %IMAGE_NAME%:latest"
                 }
             }
         }
@@ -69,12 +54,14 @@ pipeline {
     
     post {
         success {
-            echo "✅ Frontend deployed: http://localhost:3000"
+            echo "✅ Frontend deployed: http://localhost"
             echo "🐳 Portainer: http://localhost:9001"
             echo "📜 Dozzle: http://localhost:8081"
         }
         failure {
+            echo "❌ Deployment failed"
             bat "docker ps -a"
+            bat "docker compose logs --tail=50"
         }
     }
 }
