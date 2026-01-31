@@ -9,6 +9,31 @@ pipeline {
             }
         }
         
+        stage('SonarQube') {
+            steps {
+                script {
+                    try {
+                        withSonarQubeEnv('SonarQube') {
+                            withCredentials([string(credentialsId: 'sonar-token', variable: 'SONAR_TOKEN')]) {
+                                bat """
+                                docker run --rm ^
+                                    -e SONAR_HOST_URL=%SONAR_HOST_URL% ^
+                                    -e SONAR_LOGIN=%SONAR_TOKEN% ^
+                                    -v %WORKSPACE%:/usr/src ^
+                                    sonarsource/sonar-scanner-cli ^
+                                    -Dsonar.projectKey=inventory-frontend ^
+                                    -Dsonar.sources=/usr/src ^
+                                    -Dsonar.token=%SONAR_TOKEN%
+                                """
+                            }
+                        }
+                    } catch (Exception e) {
+                        echo "SonarQube scan failed: ${e.message}"
+                    }
+                }
+            }
+        }
+        
         stage('Docker') {
             steps {
                 bat "docker build -t vivek170205/inventory-frontend:latest ."
@@ -23,7 +48,7 @@ pipeline {
             steps {
                 bat "docker compose down --remove-orphans || echo No containers"
                 bat "docker compose up -d frontend"
-                bat "timeout /t 10 /nobreak"
+                powershell "Start-Sleep -Seconds 10"
             }
         }
     }
