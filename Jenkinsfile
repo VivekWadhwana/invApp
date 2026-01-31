@@ -68,7 +68,7 @@ pipeline {
             echo "📈 Prometheus: http://localhost:9090"
             echo "🐳 Portainer: http://localhost:9001"
             echo "📜 Dozzle Logs: http://localhost:8081"
-            echo "📊 cAdvisor: http://localhost:8080"
+            echo "📊 cAdvisor: http://localhost:8082"
             echo "📊 Node Exporter: http://localhost:9100"
         }
         failure {
